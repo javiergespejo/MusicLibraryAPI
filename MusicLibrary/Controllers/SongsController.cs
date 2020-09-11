@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MusicLibrary.Data;
+using MusicLibrary.DTO;
 using MusicLibrary.Models;
 
 namespace MusicLibrary.Controllers
@@ -23,16 +25,47 @@ namespace MusicLibrary.Controllers
 
         // GET: api/Songs
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Song>>> GetSong()
+        public async Task<ActionResult<IEnumerable<SongDTO>>> GetSong()
         {
-            return await _context.Song.ToListAsync();
+            var song = await _context.Song.Select(s =>
+            new SongDTO()
+            {
+                SongId = s.Id,
+                SongName = s.Name,
+                AlbumName = s.Album.Name,
+                ArtistName = s.Album.Artist.Name
+            }).ToListAsync();
+
+            return song;
         }
 
         // GET: api/Songs/5
-        [HttpGet("{id}")]
-        public async Task<ActionResult<Song>> GetSong(int id)
+        [HttpGet("{id:int}")]
+        public async Task<ActionResult<SongDTO>> GetSong(int id)
         {
-            var song = await _context.Song.FindAsync(id);
+            var song = await _context.Song.Select(s =>
+            new SongDTO()
+            {
+                SongId = s.Id,
+                SongName = s.Name,
+                AlbumName = s.Album.Name,
+                ArtistName = s.Album.Artist.Name
+            }).FirstOrDefaultAsync(s => s.SongId == id);
+
+            if (song == null)
+            {
+                return NotFound();
+            }
+
+            return song;
+        }
+
+        //Search by song name
+        // GET: api/Songs/name
+        [HttpGet("{name}")]
+        public async Task<ActionResult<List<Song>>> GetSong(string name)
+        {
+            var song = await _context.Song.Where(s => s.Name.Contains(name)).ToListAsync();
 
             if (song == null)
             {
@@ -78,12 +111,22 @@ namespace MusicLibrary.Controllers
         // To protect from overposting attacks, enable the specific properties you want to bind to, for
         // more details, see https://go.microsoft.com/fwlink/?linkid=2123754.
         [HttpPost]
-        public async Task<ActionResult<Song>> PostSong(Song song)
+        public async Task<ActionResult<List<Song>>> PostListSong(List<Song> songs)
         {
-            _context.Song.Add(song);
-            await _context.SaveChangesAsync();
+            var existingSongs = songs.Where(x => _context.Song.Any(z => z.AlbumId == x.AlbumId &&
+                                                                            z.Name == x.Name)).ToList();
 
-            return CreatedAtAction("GetSong", new { id = song.Id }, song);
+
+            if (existingSongs?.Count != 0)
+            {
+                return BadRequest(existingSongs);
+            }
+            else
+            {
+                _context.Song.AddRange(songs);
+                await _context.SaveChangesAsync();
+                return CreatedAtAction("GetSongs", new List<Song>(songs));
+            }
         }
 
         // DELETE: api/Songs/5
