@@ -111,13 +111,12 @@ namespace MusicLibrary.Controllers
         // To protect from overposting attacks, enable the specific properties you want to bind to, for
         // more details, see https://go.microsoft.com/fwlink/?linkid=2123754.
         [HttpPost]
-        public async Task<ActionResult<List<Song>>> PostListSong(List<Song> songs)
+        public async Task<ActionResult<List<Song>>> PostListSong([FromBody]List<Song> songs)
         {
             var existingSongs = songs.Where(x => _context.Song.Any(z => z.AlbumId == x.AlbumId &&
                                                                             z.Name == x.Name)).ToList();
 
-
-            if (existingSongs?.Count != 0)
+            if(existingSongs == null)
             {
                 return BadRequest(existingSongs);
             }
@@ -125,21 +124,22 @@ namespace MusicLibrary.Controllers
             {
                 _context.Song.AddRange(songs);
                 await _context.SaveChangesAsync();
-                return CreatedAtAction("GetSongs", new List<Song>(songs));
+                return CreatedAtAction("GetSong", new List<Song>(songs));
             }
         }
-
+                
         // DELETE: api/Songs/5
-        [HttpDelete("{id}")]
-        public async Task<ActionResult<Song>> DeleteSong(int id)
+        [HttpDelete]
+        public async Task<ActionResult<List<Song>>> DeleteSong([FromBody]List<Song> songs)
         {
-            var song = await _context.Song.FindAsync(id);
+            var song = songs.Where(x => _context.Song.Any(z => z.Id == x.Id)).ToList();
+            
             if (song == null)
             {
                 return NotFound();
             }
 
-            _context.Song.Remove(song);
+            _context.Song.RemoveRange(song);
             await _context.SaveChangesAsync();
 
             return song;
