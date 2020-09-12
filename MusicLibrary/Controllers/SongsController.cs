@@ -130,19 +130,22 @@ namespace MusicLibrary.Controllers
                 
         // DELETE: api/Songs/5
         [HttpDelete]
-        public async Task<ActionResult<List<Song>>> DeleteSong([FromBody]List<Song> songs)
+        public async Task<ActionResult<List<int>>> DeleteSong(List<int> ids)
         {
-            var song = songs.Where(x => _context.Song.Any(z => z.Id == x.Id)).ToList();
+            var songs = ids.Where(x => _context.Song.Any(z => z.Id == x)).ToList();
             
-            if (song == null)
+            if (songs == null)
             {
                 return NotFound();
             }
-
-            _context.Song.RemoveRange(song);
+            
+            _context.Song.RemoveRange(
+                _context.Song.Where(x => ids.Contains(x.Id))
+                );
+            
             await _context.SaveChangesAsync();
 
-            return song;
+            return songs;
         }
 
         private bool SongExists(int id)
