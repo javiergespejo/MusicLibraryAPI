@@ -111,12 +111,12 @@ namespace MusicLibrary.Controllers
         // To protect from overposting attacks, enable the specific properties you want to bind to, for
         // more details, see https://go.microsoft.com/fwlink/?linkid=2123754.
         [HttpPost]
-        public async Task<ActionResult<List<Song>>> PostListSong([FromBody]List<Song> songs)
+        public async Task<ActionResult<List<Song>>> PostListSong(List<Song> songs)
         {
             var existingSongs = songs.Where(x => _context.Song.Any(z => z.AlbumId == x.AlbumId &&
-                                                                            z.Name == x.Name)).ToList();
+                                                                      z.Name == x.Name)).ToList();
 
-            if(existingSongs == null)
+            if(existingSongs?.Count != 0)
             {
                 return BadRequest(existingSongs);
             }
