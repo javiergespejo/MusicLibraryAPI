@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MusicLibrary.Data;
+using MusicLibrary.DTO;
 using MusicLibrary.Models;
 
 namespace MusicLibrary.Controllers
@@ -23,13 +24,20 @@ namespace MusicLibrary.Controllers
 
         // GET: api/Artists
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Artist>>> GetArtist()
+        public async Task<ActionResult<IEnumerable<ArtistDTO>>> GetArtist()
         {
-            return await _context.Artist.ToListAsync();
+            var artists = await _context.Artist.Select(a =>
+            new ArtistDTO()
+            {
+                ArtistId = a.Id,
+                ArtistName = a.Name
+            }).ToListAsync();
+
+            return artists;
         }
 
         // GET: api/Artists/5
-        [HttpGet("{id}")]
+        [HttpGet("{id:int}")]
         public async Task<ActionResult<Artist>> GetArtist(int id)
         {
             var artist = await _context.Artist.FindAsync(id);
@@ -40,6 +48,26 @@ namespace MusicLibrary.Controllers
             }
 
             return artist;
+        }
+
+        //Search by artist name
+        // GET: api/Artists/name
+        [HttpGet("{name}")]
+        public async Task<ActionResult<List<ArtistDTO>>> GetArtist(string name)
+        {
+            var artists = await _context.Artist.Where(a=>a.Name.Contains(name)).Select(a =>
+            new ArtistDTO()
+            {
+                ArtistId = a.Id,
+                ArtistName = a.Name
+            }).ToListAsync();
+
+            if (artists == null)
+            {
+                return NotFound();
+            }
+
+            return artists;
         }
 
         // PUT: api/Artists/5
@@ -78,12 +106,21 @@ namespace MusicLibrary.Controllers
         // To protect from overposting attacks, enable the specific properties you want to bind to, for
         // more details, see https://go.microsoft.com/fwlink/?linkid=2123754.
         [HttpPost]
-        public async Task<ActionResult<Artist>> PostArtist(Artist artist)
+        public async Task<ActionResult<List<Artist>>> PostListArtist(List<Artist> artists)
         {
-            _context.Artist.Add(artist);
-            await _context.SaveChangesAsync();
+            var existingArtists = artists.Where(a => _context.Artist.Any(x => x.Id == a.Id &&
+                                                                         x.Name == a.Name)).ToList();
 
-            return CreatedAtAction("GetArtist", new { id = artist.Id }, artist);
+            if (existingArtists?.Count != 0)
+            {
+                return BadRequest(existingArtists);
+            }
+            else
+            {
+                _context.Artist.AddRange(artists);
+                await _context.SaveChangesAsync();
+                return CreatedAtAction("GetArtist", new List<Artist>(artists));
+            }
         }
 
         // DELETE: api/Artists/5
